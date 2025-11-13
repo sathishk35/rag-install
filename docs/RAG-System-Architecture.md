@@ -1,4 +1,4 @@
-# RAG System Architecture for Data Patterns India
+# RAG System Architecture for DP
 
 ## High-Level Architecture
 
