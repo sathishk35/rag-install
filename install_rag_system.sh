@@ -539,9 +539,23 @@ stage_10_setup_directories() {
 
     log_info "Creating directory structure..."
 
+    # Application directories
     mkdir -p "${INSTALL_DIR}"/{core,api,scripts,config,integrations,tests}
+
+    # Data directories
     mkdir -p /data/rag/{documents,vectors,cache,temp}
+
+    # Incoming directories for document processor daemon
+    mkdir -p /data/rag/incoming/{drivers,embedded,radar,general}
+    mkdir -p /data/rag/processed
+    mkdir -p /data/rag/failed
+    mkdir -p /data/rag/quarantine
+
+    # Log directories
     mkdir -p /var/log/rag
+    mkdir -p /var/log/rag-install
+
+    # State directory
     mkdir -p /var/lib/rag-system
 
     # Set permissions
@@ -555,6 +569,7 @@ stage_10_setup_directories() {
     chmod -R 755 /var/log/rag
 
     log_success "Directory structure created"
+    log_info "Incoming directories created at: /data/rag/incoming/{drivers,embedded,radar,general}"
     return 0
 }
 
@@ -636,16 +651,25 @@ EOF
 [Unit]
 Description=RAG Document Processor Daemon
 After=network.target postgresql.service redis-server.service qdrant.service
+Requires=postgresql.service redis-server.service qdrant.service
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=${INSTALL_DIR}
-Environment="PATH=${INSTALL_DIR}/venv/bin"
+Environment="PATH=${INSTALL_DIR}/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=${INSTALL_DIR}"
 EnvironmentFile=${INSTALL_DIR}/.env
 ExecStart=${INSTALL_DIR}/venv/bin/python scripts/document_processor_daemon.py
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits
+LimitNOFILE=65536
+TimeoutStartSec=300
+TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
