@@ -1,0 +1,114 @@
+# Updated RAG System Requirements with Latest Versions
+# Compatible with Python 3.12.3, Qdrant 1.15.1
+
+# Core RAG Framework (Latest LangChain 0.3.x)
+langchain==0.3.18
+langchain-community==0.3.18
+langchain-core==0.3.18
+langchain-text-splitters==0.3.18
+
+# Vector Database (Latest Qdrant)
+qdrant-client==1.12.1
+
+# Embedding Models (Latest Versions)
+sentence-transformers==3.3.1
+transformers==4.48.0
+torch==2.5.1
+accelerate==1.2.1
+safetensors==0.4.6
+
+# FastAPI and Web Framework (Latest)
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.3
+python-multipart==0.0.20
+websockets==14.0
+streamlit==1.41.0
+
+# Database Connections (Latest)
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.36
+alembic==1.14.0
+
+# Redis (Latest)
+redis==5.2.1
+
+# Document Processing (Latest)
+unstructured[local-inference]==0.16.8
+python-docx==1.1.2
+PyMuPDF==1.25.2
+python-pptx==1.0.2
+openpyxl==3.1.5
+pandas==2.2.3
+
+# Code Analysis (Latest)
+tree-sitter==0.23.2
+tree-sitter-python==0.23.4
+tree-sitter-c==0.23.3
+tree-sitter-cpp==0.23.5
+pygments==2.18.0
+gitpython==3.1.43
+
+# NLP Processing (Latest)
+nltk==3.9.1
+spacy==3.8.3
+numpy==2.2.0
+scikit-learn==1.6.0
+
+# Security and Authentication (Latest)
+cryptography==44.0.0
+pyjwt==2.10.1
+passlib[bcrypt]==1.7.4
+
+# Utilities (Latest)
+python-dotenv==1.0.1
+pydantic-settings==2.7.0
+watchdog==6.0.0
+schedule==1.2.2
+tqdm==4.67.1
+rich==13.9.4
+typer==0.15.1
+
+# HTTP and Networking (Latest)
+httpx==0.28.1
+aiohttp==3.11.10
+requests==2.32.3
+
+# File Handling (Latest)
+aiofiles==24.1.0
+pathspec==0.12.1
+
+# Monitoring and Logging (Latest)
+prometheus-client==0.21.0
+structlog==24.4.0
+loguru==0.7.3
+
+# Testing (Latest - Optional)
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx-test==0.2.1
+
+# Development Tools (Latest - Optional)
+black==24.10.0
+isort==5.13.2
+mypy==1.13.0
+
+# Additional Dependencies for Enhanced Features
+beautifulsoup4==4.12.3
+markdown==3.7.0
+jinja2==3.1.4
+pillow==11.0.0
+python-magic==0.4.27
+
+# Time and Date Handling
+python-dateutil==2.9.0.post0
+
+# Configuration Management
+pyyaml==6.0.2
+toml==0.10.2
+
+# Performance Monitoring
+psutil==6.1.0
+
+# Email Support (for alerts)
+smtplib-ssl==1.0.0

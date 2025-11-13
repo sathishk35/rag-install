@@ -1,0 +1,452 @@
+# RAG System Configuration for Data Patterns India
+# Air-gapped deployment with security considerations
+
+# System Information
+system:
+  name: "Data Patterns India RAG System"
+  version: "1.0.0"
+  environment: "production"  # production, staging, development
+  deployment_type: "air_gapped"
+  
+# Hardware Configuration
+hardware:
+  gpus:
+    - device: 0
+      model: "L40"
+      memory_gb: 24
+      allocation: "deepseek_primary"
+    - device: 1
+      model: "L40"
+      memory_gb: 24
+      allocation: "deepseek_secondary"
+    - device: 2
+      model: "L40"
+      memory_gb: 24
+      allocation: "embeddings"
+    - device: 3
+      model: "L40"
+      memory_gb: 24
+      allocation: "reranking_backup"
+  
+  memory:
+    total_gb: 128
+    allocation:
+      qdrant: 32
+      postgresql: 16
+      redis: 8
+      processing: 16
+      system: 32
+      reserved: 24
+
+# Database Configuration
+database:
+  host: "localhost"
+  port: 5432
+  database: "rag_metadata"
+  user: "rag-system"
+  password: null  # Use environment variable POSTGRES_PASSWORD
+  pool_size: 20
+  max_overflow: 50
+  pool_timeout: 30
+  pool_recycle: 3600
+  
+  # Backup configuration
+  backup:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+    location: "/data/rag/backups"
+
+# Vector Database (Qdrant) Configuration
+qdrant:
+  host: "localhost"
+  port: 6333
+  grpc_port: 6334
+  timeout: 30
+  prefer_grpc: false
+  
+  # Collections configuration
+  collections:
+    documents:
+      vector_size: 1024
+      distance: "Cosine"
+      optimizers_config:
+        deleted_threshold: 0.2
+        vacuum_min_vector_number: 1000
+        default_segment_number: 2
+        max_segment_size_kb: 200000
+        memmap_threshold_kb: 100000
+        indexing_threshold_kb: 50000
+        flush_interval_sec: 10
+        max_optimization_threads: 2
+      hnsw_config:
+        m: 16
+        ef_construct: 100
+        full_scan_threshold: 10000
+        max_indexing_threads: 2
+      quantization:
+        scalar:
+          type: "int8"
+          quantile: 0.99
+          always_ram: false
+    
+    code_chunks:
+      vector_size: 768
+      distance: "Cosine"
+      optimizers_config:
+        deleted_threshold: 0.2
+        vacuum_min_vector_number: 1000
+        default_segment_number: 2
+        max_segment_size_kb: 150000
+        memmap_threshold_kb: 75000
+        indexing_threshold_kb: 37500
+        flush_interval_sec: 10
+        max_optimization_threads: 2
+      hnsw_config:
+        m: 16
+        ef_construct: 100
+        full_scan_threshold: 10000
+        max_indexing_threads: 2
+
+# Redis Configuration
+redis:
+  host: "localhost"
+  port: 6380
+  db: 0
+  password: null  # Use environment variable REDIS_PASSWORD
+  socket_timeout: 5
+  socket_connect_timeout: 5
+  max_connections: 100
+  health_check_interval: 30
+  
+  # Cache configuration
+  cache:
+    default_ttl: 3600  # 1 hour
+    query_cache_ttl: 1800  # 30 minutes
+    session_ttl: 28800  # 8 hours
+    max_memory_policy: "allkeys-lru"
+
+# Embedding Models Configuration
+embedding:
+  models_directory: "/opt/rag-system/models"
+  
+  # Primary embedding model (BGE-M3)
+  primary_model:
+    name: "bge-m3"
+    path: "bge-m3"
+    dimension: 1024
+    max_sequence_length: 8192
+    normalize_embeddings: true
+    device: "cuda:2"
+    batch_size: 32
+    
+  # Code-specific embedding model (CodeBERT)
+  code_model:
+    name: "codebert-base"
+    path: "codebert-base"
+    dimension: 768
+    max_sequence_length: 512
+    normalize_embeddings: true
+    device: "cuda:2"
+    batch_size: 64
+    
+  # General embedding model (E5-large-v2)
+  general_model:
+    name: "e5-large-v2"
+    path: "e5-large-v2"
+    dimension: 1024
+    max_sequence_length: 512
+    normalize_embeddings: true
+    device: "cuda:2"
+    batch_size: 32
+  
+  # Chunking configuration
+  chunk_size: 1000
+  chunk_overlap: 200
+  max_chunks_per_doc: 50
+  
+  # Code-specific chunking
+  code_chunk_size: 800
+  code_chunk_overlap: 100
+
+# Retrieval Configuration
+retrieval:
+  top_k: 10
+  score_threshold: 0.7
+  rerank_top_k: 5
+  hybrid_search_weight: 0.7
+  
+  # Search strategies
+  search_strategies:
+    code:
+      collection: "code_chunks"
+      model: "code_model"
+      boost_factor: 1.2
+    documents:
+      collection: "documents"
+      model: "primary_model"
+      boost_factor: 1.0
+    hybrid:
+      collections: ["documents", "code_chunks"]
+      model: "primary_model"
+      weight_dense: 0.7
+      weight_sparse: 0.3
+
+# Language Model Configuration
+language_model:
+  provider: "ollama"  # ollama, openai_compatible
+  
+  # Ollama configuration
+  ollama:
+    base_url: "http://localhost:11434"
+    model: "deepseek-r1:70b"
+    timeout: 300
+    max_retries: 3
+    
+    # Generation parameters
+    generation:
+      temperature: 0.3
+      top_p: 0.9
+      max_tokens: 2000
+      stream: false
+      
+    # System prompts
+    system_prompts:
+      default: |
+        You are an expert software engineer and technical documentation assistant for Data Patterns India, 
+        a defense electronics company. You have access to the company's codebase, documentation, and 
+        technical reports. Provide accurate, helpful, and secure responses based on the retrieved context.
+      
+      code_analysis: |
+        You are an expert code analyst specializing in C/C++, Python, and embedded systems for defense 
+        electronics. Analyze the provided code and give detailed technical insights.
+      
+      documentation: |
+        You are a technical documentation specialist. Help users understand complex technical documents 
+        and specifications in the defense electronics domain.
+
+# Security Configuration
+security:
+  classification_levels:
+    - "public"
+    - "internal"
+    - "confidential"
+    - "restricted"
+    - "classified"
+  
+  # Domain-based access control
+  domain_restrictions:
+    classified:
+      - "radar"
+      - "ew"
+      - "classified_drivers"
+    restricted:
+      - "radar"
+      - "ew"
+      - "ate"
+      - "restricted_drivers"
+    confidential:
+      - "drivers"
+      - "embedded"
+      - "radar"
+      - "ate"
+    internal:
+      - "drivers"
+      - "embedded"
+      - "general"
+      - "ate"
+    public:
+      - "general"
+      - "public_docs"
+  
+  # Audit configuration
+  audit:
+    enabled: true
+    log_all_queries: true
+    log_failed_access: true
+    retention_days: 365
+    
+  # Session configuration
+  sessions:
+    default_duration_hours: 8
+    max_duration_hours: 24
+    cleanup_interval_minutes: 60
+    
+  # Content sanitization
+  sanitization:
+    aggressive_mode: false
+    redact_patterns:
+      - "ip_addresses"
+      - "email_addresses"
+      - "api_keys"
+      - "passwords"
+
+# Document Processing Configuration
+document_processing:
+  supported_formats:
+    - ".pdf"
+    - ".docx"
+    - ".doc"
+    - ".odt"
+    - ".txt"
+    - ".md"
+    - ".rst"
+    - ".c"
+    - ".h"
+    - ".cpp"
+    - ".cxx"
+    - ".cc"
+    - ".hpp"
+    - ".hxx"
+    - ".py"
+    - ".m"
+    - ".html"
+    - ".xml"
+    - ".json"
+    - ".csv"
+    - ".xlsx"
+    - ".sql"
+  
+  # Processing limits
+  max_file_size_mb: 100
+  max_batch_size: 50
+  processing_timeout_seconds: 300
+  
+  # Code processing
+  code_analysis:
+    use_tree_sitter: true
+    extract_functions: true
+    extract_classes: true
+    extract_comments: true
+    semantic_chunking: true
+  
+  # OCR configuration (if needed)
+  ocr:
+    enabled: false
+    engine: "tesseract"
+    languages: ["eng"]
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  
+  # CORS configuration
+  cors:
+    allow_origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+      - "https://webai2.datapatterns.co.in"
+    allow_credentials: true
+    allow_methods: ["*"]
+    allow_headers: ["*"]
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst_size: 10
+  
+  # Request/Response limits
+  max_request_size_mb: 50
+  max_response_size_mb: 10
+  request_timeout_seconds: 300
+
+# Monitoring and Logging
+monitoring:
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_format: "structured"  # structured, simple
+  
+  # Log destinations
+  logging:
+    console:
+      enabled: true
+      level: "INFO"
+    file:
+      enabled: true
+      level: "INFO"
+      path: "/var/log/rag"
+      max_size_mb: 100
+      backup_count: 10
+      rotation: "daily"
+    
+  # Metrics collection
+  metrics:
+    enabled: true
+    port: 9090
+    endpoint: "/metrics"
+    
+  # Health checks
+  health_check:
+    enabled: true
+    interval_seconds: 30
+    endpoint: "/health"
+    
+  # Performance monitoring
+  performance:
+    track_query_times: true
+    track_embedding_times: true
+    track_retrieval_times: true
+    slow_query_threshold_seconds: 5.0
+
+# Data Management
+data:
+  # Storage paths
+  storage:
+    base_directory: "/data/rag"
+    documents_directory: "/data/rag/documents"
+    vectors_directory: "/data/rag/vectors"
+    cache_directory: "/data/rag/cache"
+    temp_directory: "/tmp/rag"
+    
+  # Backup configuration
+  backup:
+    enabled: true
+    schedule: "0 1 * * *"  # Daily at 1 AM
+    retention_days: 30
+    compression: true
+    encryption: false  # Set to true in production with proper key management
+    
+  # Cleanup configuration
+  cleanup:
+    enabled: true
+    schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+    old_logs_days: 30
+    old_cache_days: 7
+    old_temp_files_hours: 24
+
+# Integration Configuration
+integrations:
+  # OpenWebUI integration
+  openwebui:
+    enabled: true
+    base_url: "https://webai2.datapatterns.co.in"
+    api_key_env: "OPENAI_API_KEY"
+    
+  # Git integration (for version control of documents)
+  git:
+    enabled: false
+    repository_path: "/data/rag/git-docs"
+    auto_sync: false
+    sync_interval_hours: 24
+    
+  # Elasticsearch (if needed for advanced search)
+  elasticsearch:
+    enabled: false
+    host: "localhost"
+    port: 9200
+    index_prefix: "rag_"
+
+# Development and Testing
+development:
+  debug_mode: false
+  mock_models: false
+  test_data_enabled: false
+  profiling_enabled: false
+  
+  # Development overrides
+  overrides:
+    chunk_size: null
+    batch_size: null
+    cache_ttl: null
